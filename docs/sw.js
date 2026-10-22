@@ -1,5 +1,5 @@
 // Layouts das Lojas - service worker: guarda só a "casca" do app; dados e fotos sempre da internet
-const CACHE = 'layouts-v1.1.1';
+const CACHE = 'layouts-v1.1.2';
 const ARQS = ['./', 'index.html', 'manifest.json', 'logo.png', 'icone-192.png', 'icone-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARQS))); self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))); self.clients.claim(); });

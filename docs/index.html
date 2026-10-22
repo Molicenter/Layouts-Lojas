@@ -37,6 +37,8 @@ header .tit small{opacity:.8;font-size:12px;white-space:nowrap;overflow:hidden;t
 @media (max-width:520px){.hbtn .txt{display:none}}
 .hbtn.on{background:var(--mag)}
 main{max-width:1200px;margin:0 auto;padding:16px}
+body.largo main{max-width:none;padding:14px 20px}
+@media (max-width:600px){body.largo main{padding:12px}}
 .crumbs{display:flex;align-items:center;gap:8px;margin:0 0 14px;flex-wrap:wrap}
 .voltar{background:var(--card);border:1px solid var(--linha);color:var(--txt);border-radius:10px;padding:8px 12px;font-size:14px;box-shadow:var(--sombra)}
 h2{margin:0;font-size:20px}
@@ -85,10 +87,11 @@ details.hist summary{font-weight:700;cursor:pointer;padding:4px 0}
 .vistas button.on{background:var(--navy);color:#fff}
 :root[data-theme="dark"] .vistas button.on{background:#0F4C7A}
 .barra-corr{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:-4px 0 12px}
-.gondola{display:flex;gap:3px;background:var(--card);border:1px solid var(--linha);border-radius:14px;padding:6px;box-shadow:var(--sombra);overflow:hidden}
+.gondola{display:flex;gap:4px;background:var(--card);border:1px solid var(--linha);border-radius:14px;padding:6px;box-shadow:var(--sombra);overflow:hidden}
 .gondola button{flex:1 1 0;min-width:0;border:0;padding:0;background:#cfd5e6;position:relative;border-radius:6px;overflow:hidden;cursor:zoom-in}
 .gondola img{display:block;width:100%;height:var(--alt-gondola,60vh);object-fit:cover}
-.gondola .n{position:absolute;left:4px;top:4px;background:var(--mag);color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px}
+.gondola .n{position:absolute;left:6px;top:6px;background:var(--mag);color:#fff;font-size:13px;font-weight:700;padding:3px 9px;border-radius:999px;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.gondola button:hover img{filter:brightness(1.06)}
 .gondola .ant{position:absolute;left:4px;bottom:4px;background:var(--laranja);color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:999px}
 .dica{font-size:12px;color:var(--sub);margin-top:8px}
 .selo-antiga{background:var(--laranja-claro);color:var(--laranja);font-size:12px;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap}
@@ -209,7 +212,7 @@ footer{text-align:center;color:var(--sub);font-size:12px;padding:24px 0 40px}
 /* ===================== CONFIGURAÇÃO ===================== */
 // Cole aqui a URL do App da Web do Apps Script (termina em /exec)
 const API_URL = 'https://script.google.com/macros/s/AKfycbwCybMltbjeU4wqH04w3w__oPtIEH_z3B-Ddv-OYSyKbKd-9FXpDbK9yo8WucDAFNVc/exec';
-const VERSAO = '1.1.1';
+const VERSAO = '1.1.2';
 // Tamanho máximo da foto enviada (lado maior, em pixels) e qualidade do JPEG
 const FOTO_MAX = 4000, FOTO_QUALIDADE = 0.9;
 /* ======================================================== */
@@ -294,6 +297,7 @@ window.addEventListener('popstate', render);
 
 async function render(){
   const p = new URLSearchParams(location.search);
+  document.body.classList.toggle('largo', !!p.get('c'));
   try{
     if (!estrutura){ app.innerHTML = '<div class="skel"></div><br><div class="skel"></div><br><div class="skel"></div>'; await carregarEstrutura(); }
     const loja = p.get('loja') ? estrutura.lojas.find(l=>numLoja(l.nome)===p.get('loja').padStart(2,'0')) : null;
@@ -396,7 +400,7 @@ function desenharFotos(loja, corr){
   const fg = $('#fg');
   if (vista==='gondola' && fs.length){
     fg.className = '';
-    fg.innerHTML = `<div class="gondola" id="gd">${fs.map((f,i)=>`<button data-i="${i}" title="Módulo ${i+1}"><img src="${imgUrl(f.id,1200)}" data-id="${f.id}" alt="Módulo ${i+1}"><span class="n">${String(i+1).padStart(2,'0')}</span>${diasDesde(f.atualizado)>DIAS_ANTIGA?'<span class="ant">antiga</span>':''}</button>`).join('')}</div>
+    fg.innerHTML = `<div class="gondola" id="gd">${fs.map((f,i)=>`<button data-i="${i}" title="Módulo ${i+1}"><img src="${imgUrl(f.id,1200)}" data-id="${f.id}" alt="Módulo ${i+1}"><span class="n">${String(i+1).padStart(2,'0')}</span>${diasDesde(f.atualizado)>DIAS_ANTIGA && maisNova<=DIAS_ANTIGA?'<span class="ant">antiga</span>':''}</button>`).join('')}</div>
       <div class="dica">Toque num módulo para ampliar${adm?' · para trocar fotos, use a vista <b>Cartões</b>':''}${innerWidth<600 && fs.length>3 ? ' · gire o celular para ver maior':''}</div>`;
     fg.querySelectorAll('img[data-id]').forEach(img=>{ img.onerror=()=>{ if(!img.dataset.fb){ img.dataset.fb=1; img.src=imgFallback(img.dataset.id,1200);} }; img.onload=ajustarGondola; });
     fg.querySelectorAll('.gondola button').forEach(b=>b.onclick=()=>abrirLB(fs, +b.dataset.i, corr.nome));
@@ -505,8 +509,8 @@ function ajustarGondola(){
   const bts = [...g.children], n = bts.length; if (!n) return;
   const asp = bts.map(b=>b.querySelector('img')).filter(i=>i.naturalWidth).map(i=>i.naturalHeight/i.naturalWidth).sort((a,b)=>a-b);
   const proporcao = asp.length ? asp[Math.floor(asp.length/2)] : 0.75;
-  const larg = (g.clientWidth - 12 - 3*(n-1)) / n;
-  const livre = innerHeight - g.getBoundingClientRect().top - 60;
+  const larg = (g.clientWidth - 14 - 4*(n-1)) / n;
+  const livre = innerHeight - g.getBoundingClientRect().top - 40;
   const alt = Math.max(80, Math.min(larg*proporcao, livre));
   g.style.setProperty('--alt-gondola', Math.round(alt)+'px');
 }
