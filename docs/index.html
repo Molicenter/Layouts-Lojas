@@ -10,6 +10,7 @@
 <link rel="apple-touch-icon" href="icone-apple-180.png">
 <script>try{var t=localStorage.getItem("tema");if(t==="dark"||t==="light")document.documentElement.dataset.theme=t;}catch(e){}</script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
 <style>
 :root{
   --navy:#0B3D63; --navy2:#0F4C7A; --mag:#E5007D; --mag2:#FF3D9E;
@@ -63,6 +64,17 @@ h2{margin:0;font-size:20px}
 .foto .tag{position:absolute;left:10px;top:10px;background:var(--mag);color:#fff;font-weight:700;font-size:13px;padding:4px 10px;border-radius:999px}
 .foto .info{padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px}
 .foto .acoes{display:flex;gap:6px;padding:0 12px 12px;flex-wrap:wrap}
+.fotos.arrastavel .foto{cursor:grab}
+.fotos.arrastavel .foto .img{cursor:grab}
+.alca{margin-left:auto;color:var(--sub);font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:4px;user-select:none}
+.foto.fantasma{opacity:.35;outline:3px dashed var(--mag);outline-offset:-3px}
+.foto.pegando{box-shadow:0 12px 34px rgba(0,0,0,.35);transform:rotate(1.5deg)}
+.foto .tag.mudou{background:var(--navy)}
+.foto .tag .de{opacity:.75;font-weight:600;margin-left:4px}
+#barraOrdem{position:sticky;bottom:12px;z-index:15;display:none;align-items:center;gap:10px;flex-wrap:wrap;background:var(--navy);color:#fff;padding:10px 12px;border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.3);margin-top:14px}
+#barraOrdem.on{display:flex}
+#barraOrdem span{flex:1;min-width:180px;font-weight:600}
+#barraOrdem .btn.sec{background:rgba(255,255,255,.14);color:#fff;border:0}
 .btn{border:0;border-radius:10px;padding:10px 14px;font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:6px}
 .btn.pri{background:var(--mag);color:#fff}
 .btn.sec{background:var(--bg);color:var(--txt);border:1px solid var(--linha)}
@@ -212,7 +224,7 @@ footer{text-align:center;color:var(--sub);font-size:12px;padding:24px 0 40px}
 /* ===================== CONFIGURAÇÃO ===================== */
 // Cole aqui a URL do App da Web do Apps Script (termina em /exec)
 const API_URL = 'https://script.google.com/macros/s/AKfycbwCybMltbjeU4wqH04w3w__oPtIEH_z3B-Ddv-OYSyKbKd-9FXpDbK9yo8WucDAFNVc/exec';
-const VERSAO = '1.2.0';
+const VERSAO = '1.3.0';
 // Tamanho máximo da foto enviada (lado maior, em pixels) e qualidade do JPEG
 const FOTO_MAX = 4000, FOTO_QUALIDADE = 0.9;
 /* ======================================================== */
@@ -292,7 +304,7 @@ async function carregarEstrutura(forcar){
 }
 
 /* ---------- rotas (?loja=01&c=ID&qr=1) ---------- */
-function ir(params){ const q = new URLSearchParams(params).toString(); history.pushState(null,'', q ? '?'+q : location.pathname); render(); window.scrollTo(0,0); }
+function ir(params){ ordemPendente = null; const q = new URLSearchParams(params).toString(); history.pushState(null,'', q ? '?'+q : location.pathname); render(); window.scrollTo(0,0); }
 window.addEventListener('popstate', render);
 
 async function render(){
@@ -369,20 +381,23 @@ async function telaCorredor(loja, corr, fresco){
       <div style="display:flex;gap:8px;align-items:center"><span class="sub" id="ultAtu"></span><button class="btn sec mini" id="bShare">↗ Compartilhar</button></div>
     </div>
     <div class="fotos" id="fg"><div class="skel" style="height:260px"></div><div class="skel" style="height:260px"></div></div>
+    <div id="barraOrdem"><span id="txtOrdem">Ordem alterada</span><button class="btn sec mini" id="bDesfOrdem">Desfazer</button><button class="btn pri mini" id="bSalvOrdem">✓ Salvar ordem</button></div>
     <div id="hist"></div>
     <div class="crumbs" style="justify-content:space-between;margin-top:18px">
       ${ant ? `<button class="voltar" id="cAnt">‹ ${esc(codCorr(ant.nome)||ant.nome)}</button>` : '<span></span>'}
       ${prox ? `<button class="voltar" id="cProx">${esc(codCorr(prox.nome)||prox.nome)} ›</button>` : ''}
     </div>`;
-  $('#vv').onclick = ()=>ir({loja:numLoja(loja.nome)});
-  app.querySelectorAll('.vistas button').forEach(b=>b.onclick=()=>{ store.sset('vista', b.dataset.v); if(fotosAtual) desenharFotos(loja, corr); });
+  $('#vv').onclick = async()=>{ if(await podeSair()) ir({loja:numLoja(loja.nome)}); };
+  app.querySelectorAll('.vistas button').forEach(b=>b.onclick=async()=>{ if(!(await podeSair())) return; store.sset('vista', b.dataset.v); if(fotosAtual) desenharFotos(loja, corr); });
   $('#bShare').onclick = async()=>{
     const url = linkCorr(loja, corr), txt = `Layout ${loja.nome} · ${corr.nome}`;
     try{ if (navigator.share){ await navigator.share({title:txt, text:txt, url}); return; } }catch(e){ if(e.name==='AbortError') return; }
     window.open('https://wa.me/?text='+encodeURIComponent(txt+'\n'+url), '_blank');
   };
-  if (ant) $('#cAnt').onclick = ()=>ir({loja:numLoja(loja.nome), c:ant.id});
-  if (prox) $('#cProx').onclick = ()=>ir({loja:numLoja(loja.nome), c:prox.id});
+  if (ant) $('#cAnt').onclick = async()=>{ if(await podeSair()) ir({loja:numLoja(loja.nome), c:ant.id}); };
+  if (prox) $('#cProx').onclick = async()=>{ if(await podeSair()) ir({loja:numLoja(loja.nome), c:prox.id}); };
+  $('#bDesfOrdem').onclick = ()=>desenharFotos(loja, corr);
+  $('#bSalvOrdem').onclick = ()=>salvarOrdem(loja, corr);
   try{
     fotosAtual = await apiGet({acao:'fotos', pasta:corr.id, fresco: fresco?'1':'0'});
     desenharFotos(loja, corr);
@@ -393,6 +408,7 @@ async function telaCorredor(loja, corr, fresco){
 
 function desenharFotos(loja, corr){
   const fs = fotosAtual.fotos, adm = isAdmin();
+  ordemPendente = null; if (sortable){ sortable.destroy(); sortable=null; } const bo=$('#barraOrdem'); if (bo) bo.classList.remove('on');
   const vista = store.sget('vista') || 'cartoes'; // abre sempre em Cartões; a troca vale só enquanto a aba estiver aberta
   app.querySelectorAll('.vistas button').forEach(b=>b.classList.toggle('on', b.dataset.v===vista));
   const maisNova = fs.reduce((m,f)=>Math.min(m, diasDesde(f.atualizado)), Infinity);
@@ -410,14 +426,13 @@ function desenharFotos(loja, corr){
   }
   fg.className = 'fotos';
   let h = fs.map((f,i)=>`
-    <div class="foto">
+    <div class="foto" data-fid="${f.id}" data-pos="${i+1}">
       <button class="img" data-i="${i}"><img loading="lazy" src="${imgUrl(f.id,900)}" data-id="${f.id}" alt="Módulo ${i+1}"><span class="tag">Módulo ${String(i+1).padStart(2,'0')}</span></button>
       <div class="info"><span class="sub">Atualizada em ${esc(f.atualizado)}</span>${diasDesde(f.atualizado)>DIAS_ANTIGA?`<span class="selo-antiga">Foto antiga</span>`:''}</div>
       ${adm ? `<div class="acoes">
         <button class="btn pri mini" data-trocar="${i+1}">📷 Trocar foto</button>
-        <button class="btn sec mini" data-mover="${i+1}" data-d="-1" ${i===0?'disabled':''} title="Trocar de lugar com o módulo anterior">◀ Mover</button>
-        <button class="btn sec mini" data-mover="${i+1}" data-d="1" ${i===fs.length-1?'disabled':''} title="Trocar de lugar com o próximo módulo">Mover ▶</button>
         <button class="btn sec mini" data-remover="${i+1}" title="Remover (vai para o Histórico)">🗑</button>
+        ${fs.length>1 ? '<span class="alca" title="Arraste o cartão para mudar a ordem">⠿ arraste para ordenar</span>' : ''}
       </div>` : ''}
     </div>`).join('');
   if (adm) h += `<button class="add" id="bAdd"><span>＋</span>Adicionar módulo ${String(fs.length+1).padStart(2,'0')}<small class="sub">tirar foto ou escolher da galeria</small></button>`;
@@ -428,7 +443,7 @@ function desenharFotos(loja, corr){
   $('#fg').querySelectorAll('button.img').forEach(b=>b.onclick=()=>abrirLB(fs, +b.dataset.i, corr.nome));
   if (adm){
     $('#fg').querySelectorAll('[data-trocar]').forEach(b=>b.onclick=()=>escolherFoto(loja,corr,+b.dataset.trocar));
-    $('#fg').querySelectorAll('[data-mover]').forEach(b=>b.onclick=()=>acao(loja,corr,{acao:'mover',modulo:+b.dataset.mover,direcao:+b.dataset.d},'Movendo…'));
+    ativarArrastar(loja, corr);
     $('#fg').querySelectorAll('[data-remover]').forEach(b=>b.onclick=async()=>{
       if (await confirmar('Remover o módulo '+b.dataset.remover+'?','A foto vai para a pasta Histórico do corredor e pode ser restaurada depois.'))
         acao(loja,corr,{acao:'remover',modulo:+b.dataset.remover},'Removendo…');
@@ -453,6 +468,48 @@ function desenharHist(loja, corr, fs, adm){
   $('#hist').querySelectorAll('[data-cmp]').forEach(b=>b.onclick=()=>{ const h=hs[+b.dataset.cmp]; const n=modDe(h.nome); abrirComparar(h, fs[n-1], `${corr.nome} · Módulo ${String(n).padStart(2,'0')}`); });
   $('#hist').querySelectorAll('[data-rest]').forEach(b=>b.onclick=()=>acao(loja,corr,{acao:'restaurar',fotoId:b.dataset.rest},'Restaurando…'));
 }
+
+/* ---------- arrastar e soltar (vista Cartões, só admin) ---------- */
+let sortable = null, ordemPendente = null;
+function ativarArrastar(loja, corr){
+  const fg = $('#fg'); if (fotosAtual.fotos.length < 2) return;
+  if (typeof Sortable === 'undefined'){ setTimeout(()=>{ if ($('#fg')===fg && isAdmin()) ativarArrastar(loja, corr); }, 600); return; }
+  fg.classList.add('arrastavel');
+  sortable = Sortable.create(fg, {
+    draggable: '.foto', filter: '.acoes button', preventOnFilter: false,
+    animation: 180, delay: 220, delayOnTouchOnly: true, touchStartThreshold: 6,
+    ghostClass: 'fantasma', chosenClass: 'pegando', scroll: true, bubbleScroll: true,
+    onEnd: ()=>{
+      const cards = [...fg.querySelectorAll('.foto')];
+      const ids = cards.map(c=>c.dataset.fid), orig = fotosAtual.fotos.map(f=>f.id);
+      let mudou = 0;
+      cards.forEach((c,i)=>{
+        const tag = c.querySelector('.tag'), de = +c.dataset.pos, ok = de===i+1;
+        if (!ok) mudou++;
+        tag.classList.toggle('mudou', !ok);
+        tag.innerHTML = `Módulo ${String(i+1).padStart(2,'0')}${ok?'':`<span class="de">(era ${String(de).padStart(2,'0')})</span>`}`;
+      });
+      ordemPendente = mudou ? ids : null;
+      $('#txtOrdem').textContent = mudou ? `${mudou} módulo(s) mudaram de posição — salve para gravar no Drive` : '';
+      $('#barraOrdem').classList.toggle('on', !!mudou);
+      if (!mudou && ids.join()!==orig.join()) ordemPendente = ids;
+    }
+  });
+}
+async function salvarOrdem(loja, corr){
+  if (!ordemPendente) return;
+  carregando(true, 'Salvando a nova ordem…');
+  try{
+    const r = await apiPost({pasta:corr.id, acao:'ordenar', ordem:ordemPendente});
+    fotosAtual = r.fotos; desenharFotos(loja, corr); toast('Ordem salva');
+  }catch(e){ tratarErroAdmin(e); }
+  carregando(false);
+}
+async function podeSair(){
+  if (!ordemPendente) return true;
+  return confirmar('Sair sem salvar a ordem?', 'Você mudou a ordem dos módulos e ainda não salvou.');
+}
+addEventListener('beforeunload', e=>{ if (ordemPendente){ e.preventDefault(); e.returnValue=''; } });
 
 async function acao(loja, corr, body, txt){
   carregando(true, txt);
@@ -628,6 +685,7 @@ async function demoPost(b){ demoInit(); await new Promise(r=>setTimeout(r,500));
   if (b.acao==='enviar'){ const novo={id:'N'+Date.now(), nome:'', atualizado:agora}; demoBlobs[novo.id]='data:image/jpeg;base64,'+b.base64;
     if (b.modulo){ const ant=f.fotos[b.modulo-1]; ant.nome=`Módulo ${String(b.modulo).padStart(2,'0')} - substituída ${agora}`; f.historico.unshift(ant); f.fotos[b.modulo-1]=novo; } else f.fotos.push(novo); }
   if (b.acao==='remover'){ const [ant]=f.fotos.splice(b.modulo-1,1); ant.nome=`Módulo ${String(b.modulo).padStart(2,'0')} - removida ${agora}`; f.historico.unshift(ant); }
+  if (b.acao==='ordenar'){ const m={}; f.fotos.forEach(x=>m[x.id]=x); f.fotos=b.ordem.map(id=>m[id]); }
   if (b.acao==='mover'){ const a=b.modulo-1, c=a+(b.direcao<0?-1:1); [f.fotos[a],f.fotos[c]]=[f.fotos[c],f.fotos[a]]; }
   if (b.acao==='restaurar'){ const i=f.historico.findIndex(x=>x.id===b.fotoId); const [x]=f.historico.splice(i,1); f.fotos.push(x); }
   return {ok:true, fotos:{pasta:b.pasta, fotos:f.fotos.slice(), historico:f.historico.slice()}};
