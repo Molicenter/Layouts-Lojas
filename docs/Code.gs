@@ -48,6 +48,15 @@ function doPost(e) {
     const lock = LockService.getScriptLock();
     lock.waitLock(30000);
     try {
+      // ações sobre as pastas dos corredores (criar / renomear / excluir)
+      if (d.acao === 'criarCorredor' || d.acao === 'renomearCorredor' || d.acao === 'excluirCorredor') {
+        let r;
+        if (d.acao === 'criarCorredor') r = criarCorredor_(d.loja, d.nome);
+        else if (d.acao === 'renomearCorredor') r = renomearCorredor_(d.pasta, d.nome);
+        else r = excluirCorredor_(d.pasta);
+        CacheService.getScriptCache().remove('estrutura');
+        return json(Object.assign({ ok: true }, r, { estrutura: estrutura_() }));
+      }
       const pasta = pastaCorredor_(d.pasta);
       let r;
       switch (d.acao) {
@@ -188,6 +197,60 @@ function restaurar_(pasta, fotoId) {
   f.moveTo(pasta);
   f.setName(nomeModulo_(n) + extensao_(f.getName()));
   return { modulo: n };
+}
+
+// ---------------------------------------------------------------- pastas dos corredores
+
+function nomeCorredorValido_(nome) {
+  nome = String(nome || '').replace(/\s+/g, ' ').trim();
+  if (!nome) throw new Error('Informe o nome do corredor');
+  if (nome.length > 80) throw new Error('Nome muito comprido');
+  if (nome.toLowerCase() === NOME_HISTORICO.toLowerCase()) throw new Error('Nome reservado');
+  return nome;
+}
+
+function nomeRepetido_(loja, nome, ignorarId) {
+  const it = loja.getFolders();
+  while (it.hasNext()) {
+    const f = it.next();
+    if (f.getId() !== ignorarId && f.getName().trim().toLowerCase() === nome.toLowerCase()) return true;
+  }
+  return false;
+}
+
+function pastaLoja_(id) {
+  if (!id) throw new Error('Loja não informada');
+  const loja = DriveApp.getFolderById(id);
+  const p = loja.getParents();
+  if (!p.hasNext() || p.next().getId() !== PASTA_RAIZ_ID) throw new Error('Loja fora da pasta Layouts');
+  return loja;
+}
+
+function criarCorredor_(lojaId, nome) {
+  const loja = pastaLoja_(lojaId);
+  nome = nomeCorredorValido_(nome);
+  if (nomeRepetido_(loja, nome, null)) throw new Error('Já existe um corredor com esse nome nesta loja');
+  const nova = loja.createFolder(nome);
+  nova.setDescription('Criada pelo site em ' + agora_());
+  return { id: nova.getId() };
+}
+
+function renomearCorredor_(id, nome) {
+  const pasta = pastaCorredor_(id);
+  nome = nomeCorredorValido_(nome);
+  const loja = pasta.getParents().next();
+  if (nomeRepetido_(loja, nome, pasta.getId())) throw new Error('Já existe um corredor com esse nome nesta loja');
+  pasta.setName(nome);
+  return { id: pasta.getId() };
+}
+
+/** Só exclui corredor sem nenhuma foto (nem no histórico). Vai para a lixeira do Drive. */
+function excluirCorredor_(id) {
+  const pasta = pastaCorredor_(id);
+  const hist = pastaHistorico_(pasta, false);
+  if (imagens_(pasta).length || (hist && imagens_(hist).length)) throw new Error('Este corredor tem fotos. Remova as fotos antes de excluir.');
+  pasta.setTrashed(true);
+  return { id: id };
 }
 
 // ---------------------------------------------------------------- apoio

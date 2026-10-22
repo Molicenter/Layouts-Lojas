@@ -55,6 +55,21 @@ h2{margin:0;font-size:20px}
 .corr{background:var(--card);border:1px solid var(--linha);border-radius:14px;padding:12px;display:flex;align-items:center;gap:12px;text-align:left;color:var(--txt);box-shadow:var(--sombra)}
 .cod{min-width:48px;height:48px;border-radius:12px;background:var(--navy);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:16px;padding:0 6px}
 .corr .nm{font-weight:600;flex:1}
+.corr-w{position:relative;display:flex}
+.corr-w .corr{flex:1;width:100%}
+.corr-w.adm .corr{padding-right:58px}
+.corr-w .ed{position:absolute;right:10px;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:10px;border:1px solid var(--linha);background:var(--bg);color:var(--txt);font-size:16px}
+.novo-corr{border:2px dashed var(--mag);background:transparent;color:var(--mag);border-radius:14px;padding:12px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;min-height:74px;font-size:15px}
+.caixa label{display:block;font-size:13px;font-weight:600;color:var(--sub);margin-top:10px}
+.caixa .campos{display:flex;gap:8px}
+.caixa .campos label:first-child{width:96px;flex:none}
+.caixa .campos label:last-child{flex:1}
+.caixa input.txt{-webkit-text-security:none;margin:4px 0 0}
+.prev-nome{margin:12px 0 4px;font-size:14px}
+.prev-nome b{background:var(--azul-claro);color:var(--navy2);padding:3px 8px;border-radius:8px}
+:root[data-theme="dark"] .prev-nome b{color:#6FB3E6}
+.caixa .linha.entre{justify-content:space-between}
+.btn.perigo{background:transparent;color:var(--erro);border:1px solid var(--erro)}
 .seta{color:var(--sub);font-size:20px}
 .fotos{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
 .foto{background:var(--card);border:1px solid var(--linha);border-radius:16px;overflow:hidden;box-shadow:var(--sombra);display:flex;flex-direction:column}
@@ -211,6 +226,21 @@ footer{text-align:center;color:var(--sub);font-size:12px;padding:24px 0 40px}
   </form>
 </div>
 
+<div class="modal" id="mCorr">
+  <form class="caixa" id="fCorr" autocomplete="off">
+    <h3 id="corrTit">Novo corredor</h3>
+    <div class="sub" id="corrSub">Cria a pasta no Drive, dentro da loja.</div>
+    <div class="campos">
+      <label>Código<input class="txt" id="iCod" placeholder="Ex.: 14A" maxlength="8" autocapitalize="characters" spellcheck="false"></label>
+      <label>Nome<input class="txt" id="iNome" placeholder="Ex.: Pets" maxlength="60"></label>
+    </div>
+    <div class="prev-nome">Pasta: <b id="corrPrev">—</b></div>
+    <div class="erro" id="eCorr"></div>
+    <div class="linha entre"><span><button type="button" class="btn perigo mini" id="bExcCorr" hidden>Excluir</button></span>
+      <span style="display:flex;gap:8px"><button type="button" class="btn sec" id="bCancCorr">Cancelar</button><button type="submit" class="btn pri" id="bSalvCorr">Salvar</button></span></div>
+  </form>
+</div>
+
 <div class="modal" id="mConf">
   <div class="caixa"><h3 id="cTit"></h3><div class="sub" id="cTxt"></div><br>
   <div class="linha"><button class="btn sec" id="cNao">Cancelar</button><button class="btn pri" id="cSim">Confirmar</button></div></div>
@@ -224,7 +254,7 @@ footer{text-align:center;color:var(--sub);font-size:12px;padding:24px 0 40px}
 /* ===================== CONFIGURAÇÃO ===================== */
 // Cole aqui a URL do App da Web do Apps Script (termina em /exec)
 const API_URL = 'https://script.google.com/macros/s/AKfycbwCybMltbjeU4wqH04w3w__oPtIEH_z3B-Ddv-OYSyKbKd-9FXpDbK9yo8WucDAFNVc/exec';
-const VERSAO = '1.3.0';
+const VERSAO = '1.4.0';
 // Tamanho máximo da foto enviada (lado maior, em pixels) e qualidade do JPEG
 const FOTO_MAX = 4000, FOTO_QUALIDADE = 0.9;
 /* ======================================================== */
@@ -315,7 +345,7 @@ async function render(){
     const loja = p.get('loja') ? estrutura.lojas.find(l=>numLoja(l.nome)===p.get('loja').padStart(2,'0')) : null;
     if (!loja) return telaInicio();
     const corr = p.get('c') ? loja.corredores.find(c=>c.id===p.get('c')) : null;
-    if (p.get('qr')) return telaQR(loja);
+    if (p.get('qr')) return telaQR(loja, corr);
     if (!corr) return telaLoja(loja);
     return telaCorredor(loja, corr);
   }catch(err){
@@ -350,21 +380,25 @@ function telaLoja(loja){
   $('#htit').textContent = loja.nome;
   app.innerHTML = `
     <div class="crumbs"><button class="voltar" id="vv">‹ Lojas</button><h2>${esc(loja.nome)}</h2></div>
-    ${isAdmin() ? `<div class="barra-admin"><button class="btn nav" id="bQR">▦ QR Codes para imprimir</button><button class="btn sec" id="bAtu">↻ Atualizar corredores</button></div>` : ''}
+    ${isAdmin() ? `<div class="barra-admin"><button class="btn pri" id="bNovoC">＋ Novo corredor</button><button class="btn nav" id="bQR">▦ QR Codes para imprimir</button><button class="btn sec" id="bAtu">↻ Atualizar corredores</button></div>` : ''}
     <input class="busca" id="busca" placeholder="Buscar corredor ou categoria…" autocomplete="off">
     <div class="lista-corr" id="lc"></div>`;
   $('#vv').onclick = ()=>ir({});
   if (isAdmin()){
     $('#bQR').onclick = ()=>ir({loja:numLoja(loja.nome), qr:1});
     $('#bAtu').onclick = async()=>{ carregando(true,'Atualizando…'); try{ await carregarEstrutura(true); render(); }catch(e){toast(e.message,1)} carregando(false); };
+    $('#bNovoC').onclick = ()=>abrirCorredor(loja, null);
   }
   const desenhar = (f='')=>{
     const t = f.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
     const lst = loja.corredores.filter(c=>c.nome.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(t));
-    $('#lc').innerHTML = lst.length ? lst.map(c=>`
-      <button class="corr" data-c="${c.id}"><span class="cod">${esc(codCorr(c.nome)||'•')}</span><span class="nm">${esc(nomeCorr(c.nome))}</span><span class="seta">›</span></button>`).join('')
-      : '<div class="vazio">Nenhum corredor encontrado.</div>';
+    const adm = isAdmin();
+    $('#lc').innerHTML = (lst.length ? lst.map(c=>`
+      <div class="corr-w${adm?' adm':''}"><button class="corr" data-c="${c.id}"><span class="cod">${esc(codCorr(c.nome)||'•')}</span><span class="nm">${esc(nomeCorr(c.nome))}</span><span class="seta">›</span></button>${adm?`<button class="ed" data-ed="${c.id}" title="Mudar nome ou código">✎</button>`:''}</div>`).join('')
+      : '<div class="vazio">Nenhum corredor encontrado.</div>') + (adm && !t ? '<button class="novo-corr" id="bNovoC2">＋ Novo corredor</button>' : '');
     $('#lc').querySelectorAll('.corr').forEach(b=>b.onclick=()=>ir({loja:numLoja(loja.nome), c:b.dataset.c}));
+    $('#lc').querySelectorAll('[data-ed]').forEach(b=>b.onclick=()=>abrirCorredor(loja, loja.corredores.find(c=>c.id===b.dataset.ed)));
+    const n2 = $('#bNovoC2'); if (n2) n2.onclick = ()=>abrirCorredor(loja, null);
   };
   $('#busca').oninput = e=>desenhar(e.target.value);
   desenhar();
@@ -378,7 +412,7 @@ async function telaCorredor(loja, corr, fresco){
     <div class="crumbs"><button class="voltar" id="vv">‹ ${esc(loja.nome)}</button><h2>${esc(corr.nome)}</h2></div>
     <div class="barra-corr">
       <div class="vistas"><button data-v="cartoes">▦ Cartões</button><button data-v="gondola">▭▭▭ Gôndola</button></div>
-      <div style="display:flex;gap:8px;align-items:center"><span class="sub" id="ultAtu"></span><button class="btn sec mini" id="bShare">↗ Compartilhar</button></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="sub" id="ultAtu"></span>${isAdmin()?'<button class="btn sec mini" id="bEdC">✎ Editar</button><button class="btn sec mini" id="bQRc">▦ QR</button>':''}<button class="btn sec mini" id="bShare">↗ Compartilhar</button></div>
     </div>
     <div class="fotos" id="fg"><div class="skel" style="height:260px"></div><div class="skel" style="height:260px"></div></div>
     <div id="barraOrdem"><span id="txtOrdem">Ordem alterada</span><button class="btn sec mini" id="bDesfOrdem">Desfazer</button><button class="btn pri mini" id="bSalvOrdem">✓ Salvar ordem</button></div>
@@ -397,6 +431,10 @@ async function telaCorredor(loja, corr, fresco){
   if (ant) $('#cAnt').onclick = async()=>{ if(await podeSair()) ir({loja:numLoja(loja.nome), c:ant.id}); };
   if (prox) $('#cProx').onclick = async()=>{ if(await podeSair()) ir({loja:numLoja(loja.nome), c:prox.id}); };
   $('#bDesfOrdem').onclick = ()=>desenharFotos(loja, corr);
+  if (isAdmin()){
+    $('#bEdC').onclick = async()=>{ if(await podeSair()) abrirCorredor(loja, corr); };
+    $('#bQRc').onclick = async()=>{ if(await podeSair()) ir({loja:numLoja(loja.nome), c:corr.id, qr:1}); };
+  }
   $('#bSalvOrdem').onclick = ()=>salvarOrdem(loja, corr);
   try{
     fotosAtual = await apiGet({acao:'fotos', pasta:corr.id, fresco: fresco?'1':'0'});
@@ -467,6 +505,48 @@ function desenharHist(loja, corr, fs, adm){
   $('#hist').querySelectorAll('[data-hi]').forEach(b=>b.onclick=()=>abrirLB(hs, +b.dataset.hi, 'Histórico · '+corr.nome));
   $('#hist').querySelectorAll('[data-cmp]').forEach(b=>b.onclick=()=>{ const h=hs[+b.dataset.cmp]; const n=modDe(h.nome); abrirComparar(h, fs[n-1], `${corr.nome} · Módulo ${String(n).padStart(2,'0')}`); });
   $('#hist').querySelectorAll('[data-rest]').forEach(b=>b.onclick=()=>acao(loja,corr,{acao:'restaurar',fotoId:b.dataset.rest},'Restaurando…'));
+}
+
+/* ---------- criar / editar corredor (pasta no Drive) ---------- */
+function abrirCorredor(loja, corr){
+  const m = $('#mCorr'), cod = $('#iCod'), nm = $('#iNome');
+  $('#corrTit').textContent = corr ? 'Editar corredor' : 'Novo corredor';
+  $('#corrSub').textContent = corr ? 'Muda o nome da pasta no Drive. As fotos e o QR Code já impresso continuam valendo.' : `Cria a pasta dentro de ${loja.nome} no Drive. Depois é só adicionar as fotos dos módulos.`;
+  cod.value = corr ? codCorr(corr.nome) : ''; nm.value = corr ? (codCorr(corr.nome) ? nomeCorr(corr.nome) : corr.nome) : '';
+  $('#eCorr').textContent = '';
+  const prev = ()=>{ const n = montarNome(); $('#corrPrev').textContent = n || '—'; };
+  cod.oninput = nm.oninput = prev; prev();
+  $('#bExcCorr').style.display = corr ? '' : 'none';
+  $('#bExcCorr').onclick = async()=>{
+    m.classList.remove('on');
+    if (!(await confirmar(`Excluir o corredor ${corr.nome}?`, 'Só funciona se não tiver nenhuma foto. A pasta vai para a lixeira do Drive.'))) return m.classList.add('on');
+    salvarCorredor(loja, {acao:'excluirCorredor', pasta:corr.id}, 'Excluindo…', ()=>ir({loja:numLoja(loja.nome)}));
+  };
+  $('#bCancCorr').onclick = ()=>m.classList.remove('on');
+  $('#fCorr').onsubmit = e=>{
+    e.preventDefault();
+    const nome = montarNome();
+    if (!nm.value.trim()) return $('#eCorr').textContent = 'Informe o nome do corredor.';
+    const repetido = loja.corredores.some(c=>c.id!==corr?.id && semAcento(c.nome)===semAcento(nome));
+    if (repetido) return $('#eCorr').textContent = 'Já existe um corredor com esse nome nesta loja.';
+    if (corr && nome===corr.nome) return m.classList.remove('on');
+    m.classList.remove('on');
+    if (corr) salvarCorredor(loja, {acao:'renomearCorredor', pasta:corr.id, nome}, 'Renomeando…', r=>{ toast('Corredor atualizado'); render(); });
+    else salvarCorredor(loja, {acao:'criarCorredor', loja:loja.id, nome}, 'Criando a pasta…', r=>{ toast('Corredor criado — agora adicione as fotos'); ir({loja:numLoja(loja.nome), c:r.id}); });
+  };
+  m.classList.add('on'); setTimeout(()=>(corr?nm:cod).focus(), 50);
+}
+function montarNome(){
+  const c = $('#iCod').value.replace(/\s+/g,'').toUpperCase(), n = $('#iNome').value.replace(/\s+/g,' ').trim();
+  return n ? (c ? `${c} - ${n}` : n) : '';
+}
+async function salvarCorredor(loja, body, txt, depois){
+  carregando(true, txt);
+  try{
+    const r = await apiPost(body);
+    estrutura = ordenar(r.estrutura); store.set('estrutura', JSON.stringify(estrutura));
+    carregando(false); depois(r);
+  }catch(e){ carregando(false); tratarErroAdmin(e); }
 }
 
 /* ---------- arrastar e soltar (vista Cartões, só admin) ---------- */
@@ -635,8 +715,19 @@ $('#fLogin').onsubmit = async e=>{
 };
 
 /* ---------- QR Codes ---------- */
-function telaQR(loja){
+function telaQR(loja, so){
   $('#htit').textContent = `${loja.nome} · QR Codes`;
+  if (so){
+    app.innerHTML = `
+    <div class="crumbs"><button class="voltar" id="vv">‹ ${esc(so.nome)}</button><h2>QR Code do corredor</h2></div>
+    <div class="barra-admin"><button class="btn pri" onclick="print()">🖨 Imprimir</button><button class="btn sec" id="bTodos">Ver todos da loja</button></div>
+    <div class="qr-folha"><div class="qr-capa" style="border:0"><img src="logo.png" alt="" style="height:80px;margin-bottom:6px"><h1>${esc(codCorr(so.nome)||so.nome)}</h1><p>${esc(nomeCorr(so.nome))} · ${esc(loja.nome)}</p><div class="qr" id="qrLoja"></div></div></div>`;
+    $('#vv').onclick = ()=>ir({loja:numLoja(loja.nome), c:so.id});
+    $('#bTodos').onclick = ()=>ir({loja:numLoja(loja.nome), qr:1});
+    if (typeof QRCode === 'undefined'){ toast('Não carregou o gerador de QR. Verifique a internet.',1); return; }
+    new QRCode($('#qrLoja'), {text:linkCorr(loja,so), width:300, height:300, correctLevel:QRCode.CorrectLevel.M});
+    return;
+  }
   app.innerHTML = `
     <div class="crumbs"><button class="voltar" id="vv">‹ ${esc(loja.nome)}</button><h2>QR Codes</h2></div>
     <div class="barra-admin"><button class="btn pri" onclick="print()">🖨 Imprimir</button><span class="sub" style="align-self:center">1ª página: QR da loja (1ª gôndola). Depois: um QR por corredor.</span></div>
@@ -681,6 +772,14 @@ async function demoGet(p){ demoInit(); await new Promise(r=>setTimeout(r,250));
 async function demoPost(b){ demoInit(); await new Promise(r=>setTimeout(r,500));
   if (b.senha!=='demo') throw new Error('Senha incorreta (na demonstração a senha é: demo)');
   if (b.acao==='login') return {ok:true};
+  if (/Corredor$/.test(b.acao)){
+    let id = b.pasta;
+    if (b.acao==='criarCorredor'){ id='C'+Date.now(); demoDB.lojas.find(l=>l.id===b.loja).corredores.push({id, nome:b.nome}); demoDB.fotos[id]={fotos:[],historico:[]}; }
+    demoDB.lojas.forEach(l=>{ const i=l.corredores.findIndex(c=>c.id===b.pasta); if(i<0) return;
+      if (b.acao==='renomearCorredor') l.corredores[i].nome=b.nome;
+      if (b.acao==='excluirCorredor'){ if (demoDB.fotos[b.pasta].fotos.length) throw new Error('Este corredor tem fotos. Remova as fotos antes de excluir.'); l.corredores.splice(i,1); } });
+    return {ok:true, id, estrutura:JSON.parse(JSON.stringify({lojas:demoDB.lojas}))};
+  }
   const f = demoDB.fotos[b.pasta], agora = new Date().toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
   if (b.acao==='enviar'){ const novo={id:'N'+Date.now(), nome:'', atualizado:agora}; demoBlobs[novo.id]='data:image/jpeg;base64,'+b.base64;
     if (b.modulo){ const ant=f.fotos[b.modulo-1]; ant.nome=`Módulo ${String(b.modulo).padStart(2,'0')} - substituída ${agora}`; f.historico.unshift(ant); f.fotos[b.modulo-1]=novo; } else f.fotos.push(novo); }
