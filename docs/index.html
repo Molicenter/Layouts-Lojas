@@ -212,7 +212,7 @@ footer{text-align:center;color:var(--sub);font-size:12px;padding:24px 0 40px}
 /* ===================== CONFIGURAÇÃO ===================== */
 // Cole aqui a URL do App da Web do Apps Script (termina em /exec)
 const API_URL = 'https://script.google.com/macros/s/AKfycbwCybMltbjeU4wqH04w3w__oPtIEH_z3B-Ddv-OYSyKbKd-9FXpDbK9yo8WucDAFNVc/exec';
-const VERSAO = '1.1.2';
+const VERSAO = '1.2.0';
 // Tamanho máximo da foto enviada (lado maior, em pixels) e qualidade do JPEG
 const FOTO_MAX = 4000, FOTO_QUALIDADE = 0.9;
 /* ======================================================== */
@@ -365,7 +365,7 @@ async function telaCorredor(loja, corr, fresco){
   app.innerHTML = `
     <div class="crumbs"><button class="voltar" id="vv">‹ ${esc(loja.nome)}</button><h2>${esc(corr.nome)}</h2></div>
     <div class="barra-corr">
-      <div class="vistas"><button data-v="gondola">▭▭▭ Gôndola</button><button data-v="cartoes">▦ Cartões</button></div>
+      <div class="vistas"><button data-v="cartoes">▦ Cartões</button><button data-v="gondola">▭▭▭ Gôndola</button></div>
       <div style="display:flex;gap:8px;align-items:center"><span class="sub" id="ultAtu"></span><button class="btn sec mini" id="bShare">↗ Compartilhar</button></div>
     </div>
     <div class="fotos" id="fg"><div class="skel" style="height:260px"></div><div class="skel" style="height:260px"></div></div>
@@ -375,7 +375,7 @@ async function telaCorredor(loja, corr, fresco){
       ${prox ? `<button class="voltar" id="cProx">${esc(codCorr(prox.nome)||prox.nome)} ›</button>` : ''}
     </div>`;
   $('#vv').onclick = ()=>ir({loja:numLoja(loja.nome)});
-  app.querySelectorAll('.vistas button').forEach(b=>b.onclick=()=>{ store.set('vista', b.dataset.v); if(fotosAtual) desenharFotos(loja, corr); });
+  app.querySelectorAll('.vistas button').forEach(b=>b.onclick=()=>{ store.sset('vista', b.dataset.v); if(fotosAtual) desenharFotos(loja, corr); });
   $('#bShare').onclick = async()=>{
     const url = linkCorr(loja, corr), txt = `Layout ${loja.nome} · ${corr.nome}`;
     try{ if (navigator.share){ await navigator.share({title:txt, text:txt, url}); return; } }catch(e){ if(e.name==='AbortError') return; }
@@ -393,7 +393,7 @@ async function telaCorredor(loja, corr, fresco){
 
 function desenharFotos(loja, corr){
   const fs = fotosAtual.fotos, adm = isAdmin();
-  const vista = store.get('vista') || 'gondola';
+  const vista = store.sget('vista') || 'cartoes'; // abre sempre em Cartões; a troca vale só enquanto a aba estiver aberta
   app.querySelectorAll('.vistas button').forEach(b=>b.classList.toggle('on', b.dataset.v===vista));
   const maisNova = fs.reduce((m,f)=>Math.min(m, diasDesde(f.atualizado)), Infinity);
   const ua = $('#ultAtu'); if (ua) ua.innerHTML = fs.length ? (maisNova>DIAS_ANTIGA ? `<span class="selo-antiga">Sem atualização há ${maisNova} dias</span>` : `Última foto: ${fs.map(f=>f.atualizado).sort((a,b)=>diasDesde(a)-diasDesde(b))[0].slice(0,10)}`) : '';
@@ -415,9 +415,9 @@ function desenharFotos(loja, corr){
       <div class="info"><span class="sub">Atualizada em ${esc(f.atualizado)}</span>${diasDesde(f.atualizado)>DIAS_ANTIGA?`<span class="selo-antiga">Foto antiga</span>`:''}</div>
       ${adm ? `<div class="acoes">
         <button class="btn pri mini" data-trocar="${i+1}">📷 Trocar foto</button>
-        <button class="btn sec mini" data-mover="${i+1}" data-d="-1" ${i===0?'disabled':''}>◀</button>
-        <button class="btn sec mini" data-mover="${i+1}" data-d="1" ${i===fs.length-1?'disabled':''}>▶</button>
-        <button class="btn sec mini" data-remover="${i+1}">🗑</button>
+        <button class="btn sec mini" data-mover="${i+1}" data-d="-1" ${i===0?'disabled':''} title="Trocar de lugar com o módulo anterior">◀ Mover</button>
+        <button class="btn sec mini" data-mover="${i+1}" data-d="1" ${i===fs.length-1?'disabled':''} title="Trocar de lugar com o próximo módulo">Mover ▶</button>
+        <button class="btn sec mini" data-remover="${i+1}" title="Remover (vai para o Histórico)">🗑</button>
       </div>` : ''}
     </div>`).join('');
   if (adm) h += `<button class="add" id="bAdd"><span>＋</span>Adicionar módulo ${String(fs.length+1).padStart(2,'0')}<small class="sub">tirar foto ou escolher da galeria</small></button>`;
