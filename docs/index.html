@@ -209,7 +209,7 @@ footer{text-align:center;color:var(--sub);font-size:12px;padding:24px 0 40px}
 /* ===================== CONFIGURAÇÃO ===================== */
 // Cole aqui a URL do App da Web do Apps Script (termina em /exec)
 const API_URL = 'https://script.google.com/macros/s/AKfycbwCybMltbjeU4wqH04w3w__oPtIEH_z3B-Ddv-OYSyKbKd-9FXpDbK9yo8WucDAFNVc/exec';
-const VERSAO = '1.1.0';
+const VERSAO = '1.1.1';
 // Tamanho máximo da foto enviada (lado maior, em pixels) e qualidade do JPEG
 const FOTO_MAX = 4000, FOTO_QUALIDADE = 0.9;
 /* ======================================================== */
@@ -272,17 +272,19 @@ async function apiPost(body){
   const j = await r.json(); if (j.erro) throw new Error(j.erro); return j;
 }
 
+// ordena lojas (01, 02…) e corredores (0, 1A, 1B, 2A… 10A, 10B) pelo número e depois pela letra
+function chaveCorr(nome){ const c = (codCorr(nome) || nome).toUpperCase().replace(/^O(?=[A-Z]?\b)/,'0'); const m = /^(\d+)\s*([A-Z]*)(\d*)/.exec(c); return m ? [+m[1], m[2], +(m[3]||0)] : [9999, c, 0]; }
+function cmpCorr(a,b){ const x=chaveCorr(a.nome), y=chaveCorr(b.nome); return x[0]-y[0] || col.compare(x[1],y[1]) || x[2]-y[2] || col.compare(a.nome,b.nome); }
+function ordenar(e){ e.lojas.sort((a,b)=>col.compare(a.nome,b.nome)); e.lojas.forEach(l=>l.corredores.sort(cmpCorr)); return e; }
 async function carregarEstrutura(forcar){
-  if (!forcar && !estrutura){ const c = store.get('estrutura'); if (c) try{ estrutura = JSON.parse(c) }catch(e){} }
+  if (!forcar && !estrutura){ const c = store.get('estrutura'); if (c) try{ estrutura = ordenar(JSON.parse(c)) }catch(e){} }
   if (!estrutura || forcar){
-    estrutura = await apiGet({acao:'estrutura'});
+    estrutura = ordenar(await apiGet({acao:'estrutura'}));
     store.set('estrutura', JSON.stringify(estrutura));
   } else {
-    // atualiza em segundo plano
-    apiGet({acao:'estrutura'}).then(e=>{ estrutura=e; store.set('estrutura', JSON.stringify(e)); }).catch(()=>{});
+    // atualiza em segundo plano, já ordenado
+    apiGet({acao:'estrutura'}).then(e=>{ estrutura=ordenar(e); store.set('estrutura', JSON.stringify(estrutura)); }).catch(()=>{});
   }
-  estrutura.lojas.sort((a,b)=>col.compare(a.nome,b.nome));
-  estrutura.lojas.forEach(l=>l.corredores.sort((a,b)=>col.compare(a.nome,b.nome)));
   return estrutura;
 }
 
