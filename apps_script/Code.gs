@@ -1,0 +1,280 @@
+/**
+ * Layouts das Lojas - Molicenter
+ * Backend em Google Apps Script que le e grava direto nas pastas do Drive:
+ *   Layouts / Loja XX / <corredor> / fotos dos modulos
+ *   Layouts / Loja XX / <corredor> / Histórico / fotos antigas
+ *
+ * Implantar: Implantar > Nova implantação > App da Web
+ *   Executar como: Eu  |  Quem pode acessar: Qualquer pessoa
+ *
+ * Senha do administrador: Configurações do projeto > Propriedades do script
+ *   ADMIN_SENHA = sua senha
+ */
+
+// ID da pasta "Layouts" (o trecho final do link da pasta no Drive)
+const PASTA_RAIZ_ID = '1PiYmXWnQomnGX0OoYtzmbbtF9UrUVdci';
+
+const NOME_HISTORICO = 'Histórico';
+const FUSO = 'America/Sao_Paulo';
+const CACHE_SEG = 600; // 10 minutos
+
+// ---------------------------------------------------------------- entrada
+
+function doGet(e) {
+  const p = (e && e.parameter) || {};
+  try {
+    switch (p.acao) {
+      case 'estrutura': return json(estrutura_());
+      case 'fotos':     return json(fotos_(p.pasta, p.fresco === '1'));
+      case 'ping':      return json({ ok: true, hora: agora_() });
+      default:          return json({ erro: 'Ação inválida' });
+    }
+  } catch (err) {
+    return json({ erro: String(err.message || err) });
+  }
+}
+
+function doPost(e) {
+  let d;
+  try {
+    d = JSON.parse(e.postData.contents);
+  } catch (err) {
+    return json({ erro: 'Requisição inválida' });
+  }
+  try {
+    checarSenha_(d.senha);
+    if (d.acao === 'login') return json({ ok: true });
+
+    const lock = LockService.getScriptLock();
+    lock.waitLock(30000);
+    try {
+      const pasta = pastaCorredor_(d.pasta);
+      let r;
+      switch (d.acao) {
+        case 'enviar':  r = enviar_(pasta, d); break;
+        case 'remover': r = remover_(pasta, Number(d.modulo)); break;
+        case 'mover':   r = mover_(pasta, Number(d.modulo), Number(d.direcao)); break;
+        case 'restaurar': r = restaurar_(pasta, d.fotoId); break;
+        default: throw new Error('Ação inválida');
+      }
+      limparCache_(pasta.getId());
+      return json(Object.assign({ ok: true }, r, { fotos: fotos_(pasta.getId(), true) }));
+    } finally {
+      lock.releaseLock();
+    }
+  } catch (err) {
+    return json({ erro: String(err.message || err) });
+  }
+}
+
+// ---------------------------------------------------------------- leitura
+
+function estrutura_() {
+  const cache = CacheService.getScriptCache();
+  const c = cache.get('estrutura');
+  if (c) return JSON.parse(c);
+
+  const raiz = DriveApp.getFolderById(PASTA_RAIZ_ID);
+  const lojas = [];
+  const itLojas = raiz.getFolders();
+  while (itLojas.hasNext()) {
+    const fl = itLojas.next();
+    const corredores = [];
+    const itC = fl.getFolders();
+    while (itC.hasNext()) {
+      const fc = itC.next();
+      corredores.push({ id: fc.getId(), nome: fc.getName().trim() });
+    }
+    lojas.push({ id: fl.getId(), nome: fl.getName().trim(), corredores: corredores });
+  }
+  const r = { lojas: lojas, gerado: agora_() };
+  try { cache.put('estrutura', JSON.stringify(r), CACHE_SEG); } catch (e) {}
+  return r;
+}
+
+function fotos_(pastaId, fresco) {
+  const cache = CacheService.getScriptCache();
+  const chave = 'f_' + pastaId;
+  if (!fresco) {
+    const c = cache.get(chave);
+    if (c) return JSON.parse(c);
+  }
+  const pasta = pastaCorredor_(pastaId);
+  const lista = imagens_(pasta).map(infoFoto_);
+  const hist = pastaHistorico_(pasta, false);
+  const historico = hist ? imagens_(hist).map(infoFoto_).reverse() : [];
+  const r = { pasta: pastaId, nome: pasta.getName(), fotos: lista, historico: historico };
+  try { cache.put(chave, JSON.stringify(r), CACHE_SEG); } catch (e) {}
+  return r;
+}
+
+function infoFoto_(f) {
+  return {
+    id: f.getId(),
+    nome: f.getName(),
+    atualizado: Utilities.formatDate(f.getLastUpdated(), FUSO, 'dd/MM/yyyy HH:mm'),
+    criado: Utilities.formatDate(f.getDateCreated(), FUSO, 'dd/MM/yyyy HH:mm'),
+    tamanho: f.getSize()
+  };
+}
+
+// ---------------------------------------------------------------- escrita
+
+function enviar_(pasta, d) {
+  if (!d.base64) throw new Error('Foto não recebida');
+  const lista = normalizar_(pasta);
+  const mime = d.mime || 'image/jpeg';
+  const ext = mime === 'image/png' ? '.png' : '.jpg';
+  const bytes = Utilities.base64Decode(d.base64);
+  let n;
+
+  if (d.modulo) {
+    n = Number(d.modulo);
+    const antiga = lista[n - 1];
+    if (!antiga) throw new Error('Módulo ' + n + ' não existe');
+    arquivar_(pasta, antiga, n, 'substituída');
+  } else {
+    n = lista.length + 1;
+  }
+
+  const blob = Utilities.newBlob(bytes, mime, nomeModulo_(n) + ext);
+  const novo = pasta.createFile(blob);
+  novo.setDescription('Enviada pelo site em ' + agora_());
+  compartilhar_(novo);
+  return { modulo: n, id: novo.getId() };
+}
+
+function remover_(pasta, n) {
+  const lista = normalizar_(pasta);
+  const f = lista[n - 1];
+  if (!f) throw new Error('Módulo ' + n + ' não existe');
+  arquivar_(pasta, f, n, 'removida');
+  renumerar_(imagens_(pasta));
+  return { modulo: n };
+}
+
+function mover_(pasta, n, direcao) {
+  const lista = normalizar_(pasta);
+  const alvo = n + (direcao < 0 ? -1 : 1);
+  if (!lista[n - 1] || !lista[alvo - 1]) throw new Error('Não dá para mover');
+  const a = lista[n - 1], b = lista[alvo - 1];
+  lista[n - 1] = b; lista[alvo - 1] = a;
+  renumerar_(lista);
+  return { modulo: alvo };
+}
+
+function restaurar_(pasta, fotoId) {
+  const hist = pastaHistorico_(pasta, false);
+  if (!hist) throw new Error('Sem histórico');
+  const f = DriveApp.getFileById(fotoId);
+  const pais = f.getParents();
+  if (!pais.hasNext() || pais.next().getId() !== hist.getId()) throw new Error('Foto não pertence a este corredor');
+  const lista = normalizar_(pasta);
+  const n = lista.length + 1;
+  f.moveTo(pasta);
+  f.setName(nomeModulo_(n) + extensao_(f.getName()));
+  return { modulo: n };
+}
+
+// ---------------------------------------------------------------- apoio
+
+/** Renomeia as fotos do corredor para "Módulo 01", "Módulo 02"... mantendo a ordem atual. */
+function normalizar_(pasta) {
+  const lista = imagens_(pasta);
+  const ok = lista.every(function (f, i) {
+    return f.getName().indexOf(nomeModulo_(i + 1) + '.') === 0;
+  });
+  if (!ok) renumerar_(lista);
+  return lista;
+}
+
+function renumerar_(lista) {
+  // 1ª passada com nome temporário para evitar colisão de nomes
+  lista.forEach(function (f, i) { f.setName('~tmp' + i + extensao_(f.getName())); });
+  lista.forEach(function (f, i) { f.setName(nomeModulo_(i + 1) + extensao_(f.getName())); });
+}
+
+function arquivar_(pasta, f, n, motivo) {
+  const hist = pastaHistorico_(pasta, true);
+  const quando = Utilities.formatDate(new Date(), FUSO, 'yyyy-MM-dd HHmm');
+  f.setName(nomeModulo_(n) + ' - ' + motivo + ' ' + quando + extensao_(f.getName()));
+  f.moveTo(hist);
+}
+
+function imagens_(pasta) {
+  const out = [];
+  const it = pasta.getFiles();
+  while (it.hasNext()) {
+    const f = it.next();
+    if (String(f.getMimeType()).indexOf('image/') === 0) out.push(f);
+  }
+  const col = function (a, b) {
+    return a.getName().localeCompare(b.getName(), 'pt-BR', { numeric: true, sensitivity: 'base' });
+  };
+  return out.sort(col);
+}
+
+function pastaHistorico_(pasta, criar) {
+  const it = pasta.getFoldersByName(NOME_HISTORICO);
+  if (it.hasNext()) return it.next();
+  if (!criar) return null;
+  return pasta.createFolder(NOME_HISTORICO);
+}
+
+/** Garante que a pasta é um corredor dentro de Layouts/Loja XX. */
+function pastaCorredor_(id) {
+  if (!id) throw new Error('Corredor não informado');
+  const pasta = DriveApp.getFolderById(id);
+  const p1 = pasta.getParents();
+  if (!p1.hasNext()) throw new Error('Corredor inválido');
+  const loja = p1.next();
+  const p2 = loja.getParents();
+  if (!p2.hasNext() || p2.next().getId() !== PASTA_RAIZ_ID) throw new Error('Corredor fora da pasta Layouts');
+  return pasta;
+}
+
+function compartilhar_(f) {
+  try { f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (e) {}
+}
+
+function checarSenha_(senha) {
+  const certa = PropertiesService.getScriptProperties().getProperty('ADMIN_SENHA');
+  if (!certa) throw new Error('Senha do administrador não configurada no Apps Script');
+  if (String(senha || '') !== certa) {
+    Utilities.sleep(800);
+    throw new Error('Senha incorreta');
+  }
+}
+
+function limparCache_(pastaId) {
+  CacheService.getScriptCache().removeAll(['f_' + pastaId, 'estrutura']);
+}
+
+function nomeModulo_(n) { return 'Módulo ' + (n < 10 ? '0' + n : String(n)); }
+function extensao_(nome) { const m = /\.[a-z0-9]+$/i.exec(nome); return m ? m[0].toLowerCase() : '.jpg'; }
+function agora_() { return Utilities.formatDate(new Date(), FUSO, 'dd/MM/yyyy HH:mm'); }
+function json(o) {
+  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
+}
+
+// ---------------------------------------------------------------- utilitários (rodar à mão no editor)
+
+/** Rode uma vez: deixa todas as fotos já existentes visíveis pelo link (necessário para o site mostrar). */
+function liberarFotosExistentes() {
+  const raiz = DriveApp.getFolderById(PASTA_RAIZ_ID);
+  let n = 0;
+  const percorrer = function (pasta) {
+    const fs = pasta.getFiles();
+    while (fs.hasNext()) { const f = fs.next(); if (String(f.getMimeType()).indexOf('image/') === 0) { compartilhar_(f); n++; } }
+    const ps = pasta.getFolders();
+    while (ps.hasNext()) percorrer(ps.next());
+  };
+  percorrer(raiz);
+  Logger.log(n + ' fotos liberadas');
+}
+
+/** Rode para testar se o script enxerga a pasta Layouts. */
+function testar() {
+  const e = estrutura_();
+  e.lojas.forEach(function (l) { Logger.log(l.nome + ': ' + l.corredores.length + ' corredores'); });
+}
