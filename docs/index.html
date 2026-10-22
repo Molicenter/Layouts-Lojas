@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Layouts das Lojas</title>
+<meta name="theme-color" content="#1d2b5e">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{
+  --navy:#1d2b5e; --navy2:#2a3d80; --mag:#d1186e; --mag2:#ff4f9a;
+  --bg:#f4f6fb; --card:#ffffff; --txt:#16203f; --sub:#5d6788; --linha:#e2e6f0;
+  --ok:#16a34a; --erro:#dc2626; --sombra:0 2px 10px rgba(20,30,70,.08);
+}
+:root[data-theme="dark"]{
+  --bg:#0f1424; --card:#182038; --txt:#eef1fa; --sub:#9aa4c4; --linha:#28324f; --sombra:0 2px 10px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
+button{font:inherit;cursor:pointer}
+a{color:inherit}
+header{position:sticky;top:0;z-index:20;background:linear-gradient(90deg,var(--navy),var(--navy2));color:#fff;padding:10px 16px;padding-top:max(10px,env(safe-area-inset-top));display:flex;align-items:center;gap:10px;box-shadow:0 2px 12px rgba(0,0,0,.2)}
+header img{width:34px;height:34px;border-radius:9px;background:#fff}
+header .tit{flex:1;min-width:0}
+header .tit b{display:block;font-size:17px;line-height:1.1}
+header .tit small{opacity:.8;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.hbtn{background:rgba(255,255,255,.14);border:0;color:#fff;border-radius:10px;height:36px;min-width:36px;padding:0 10px;display:flex;align-items:center;gap:6px;font-size:14px}
+.hbtn.on{background:var(--mag)}
+main{max-width:1200px;margin:0 auto;padding:16px}
+.crumbs{display:flex;align-items:center;gap:8px;margin:0 0 14px;flex-wrap:wrap}
+.voltar{background:var(--card);border:1px solid var(--linha);color:var(--txt);border-radius:10px;padding:8px 12px;font-size:14px;box-shadow:var(--sombra)}
+h2{margin:0;font-size:20px}
+.sub{color:var(--sub);font-size:13px}
+.grid-lojas{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.loja{background:var(--card);border:1px solid var(--linha);border-radius:16px;padding:18px 14px;text-align:left;color:var(--txt);box-shadow:var(--sombra);display:flex;flex-direction:column;gap:6px;position:relative;overflow:hidden}
+.loja::after{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--mag)}
+.loja .num{font-size:30px;font-weight:800;color:var(--navy2)}
+:root[data-theme="dark"] .loja .num{color:#8fa5ff}
+.loja .lbl{font-weight:600}
+.busca{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--linha);background:var(--card);color:var(--txt);font-size:16px;margin-bottom:12px}
+.lista-corr{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.corr{background:var(--card);border:1px solid var(--linha);border-radius:14px;padding:12px;display:flex;align-items:center;gap:12px;text-align:left;color:var(--txt);box-shadow:var(--sombra)}
+.cod{min-width:48px;height:48px;border-radius:12px;background:var(--navy);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:16px;padding:0 6px}
+.corr .nm{font-weight:600;flex:1}
+.seta{color:var(--sub);font-size:20px}
+.fotos{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+.foto{background:var(--card);border:1px solid var(--linha);border-radius:16px;overflow:hidden;box-shadow:var(--sombra);display:flex;flex-direction:column}
+.foto .img{aspect-ratio:4/3;background:#cfd5e6 center/cover no-repeat;position:relative;border:0;padding:0;width:100%;display:block}
+:root[data-theme="dark"] .foto .img{background-color:#222b47}
+.foto .img img{width:100%;height:100%;object-fit:cover;display:block}
+.foto .tag{position:absolute;left:10px;top:10px;background:var(--mag);color:#fff;font-weight:700;font-size:13px;padding:4px 10px;border-radius:999px}
+.foto .info{padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.foto .acoes{display:flex;gap:6px;padding:0 12px 12px;flex-wrap:wrap}
+.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:6px}
+.btn.pri{background:var(--mag);color:#fff}
+.btn.sec{background:var(--bg);color:var(--txt);border:1px solid var(--linha)}
+.btn.nav{background:var(--navy);color:#fff}
+.btn.mini{padding:8px 10px;font-size:13px}
+.btn:disabled{opacity:.4}
+.add{border:2px dashed var(--mag);background:transparent;color:var(--mag);border-radius:16px;min-height:200px;font-weight:700;font-size:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+.add span{font-size:40px;line-height:1}
+.vazio{padding:40px 16px;text-align:center;color:var(--sub);background:var(--card);border-radius:16px;border:1px dashed var(--linha)}
+details.hist{margin-top:22px;background:var(--card);border:1px solid var(--linha);border-radius:14px;padding:10px 14px}
+details.hist summary{font-weight:700;cursor:pointer;padding:4px 0}
+.hist-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:10px}
+.hist-item{font-size:12px;color:var(--sub)}
+.hist-item button.img{width:100%;aspect-ratio:4/3;border:0;border-radius:10px;padding:0;overflow:hidden;background:#cfd5e6;display:block;margin-bottom:4px}
+.hist-item img{width:100%;height:100%;object-fit:cover}
+.barra-admin{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+.aviso{background:#fff3f8;border:1px solid #f8c2da;color:#8a1048;padding:10px 12px;border-radius:12px;font-size:14px;margin-bottom:12px}
+:root[data-theme="dark"] .aviso{background:#3a1328;border-color:#6b2148;color:#ffc4dd}
+/* lightbox */
+#lb{position:fixed;inset:0;background:rgba(5,8,20,.96);z-index:50;display:none;flex-direction:column}
+#lb.on{display:flex}
+#lb .topo{display:flex;align-items:center;gap:8px;padding:10px 12px;padding-top:max(10px,env(safe-area-inset-top));color:#fff}
+#lb .topo b{flex:1}
+#lb .area{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;touch-action:pan-x pan-y pinch-zoom}
+#lb .area img{max-width:100%;max-height:100%;object-fit:contain;transition:width .15s}
+#lb .area.zoom{display:block}
+#lb .area.zoom img{max-width:none;max-height:none;width:250%}
+#lb .pe{display:flex;justify-content:space-between;gap:8px;padding:10px 12px;padding-bottom:max(10px,env(safe-area-inset-bottom))}
+#lb .pe .btn{background:rgba(255,255,255,.14);color:#fff}
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(10,15,35,.55);z-index:60;display:none;align-items:center;justify-content:center;padding:16px}
+.modal.on{display:flex}
+.caixa{background:var(--card);color:var(--txt);border-radius:18px;padding:20px;width:100%;max-width:380px;box-shadow:0 10px 40px rgba(0,0,0,.3)}
+.caixa h3{margin:0 0 6px}
+.caixa input{width:100%;padding:12px;border-radius:10px;border:1px solid var(--linha);background:var(--bg);color:var(--txt);font-size:16px;margin:12px 0;-webkit-text-security:disc}
+.caixa .linha{display:flex;gap:8px;justify-content:flex-end}
+.erro{color:var(--erro);font-size:14px;min-height:18px}
+#carregando{position:fixed;inset:0;background:rgba(10,15,35,.6);z-index:70;display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:#fff;font-weight:600}
+#carregando.on{display:flex}
+.spin{width:44px;height:44px;border:4px solid rgba(255,255,255,.3);border-top-color:var(--mag2);border-radius:50%;animation:g 1s linear infinite}
+@keyframes g{to{transform:rotate(360deg)}}
+.prog{width:220px;height:8px;background:rgba(255,255,255,.2);border-radius:99px;overflow:hidden}
+.prog i{display:block;height:100%;width:0;background:var(--mag2);transition:width .2s}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(120px);background:var(--navy);color:#fff;padding:12px 18px;border-radius:12px;z-index:80;transition:transform .25s;font-weight:600;max-width:90vw;text-align:center}
+#toast.on{transform:translateX(-50%) translateY(0)}
+#toast.e{background:var(--erro)}
+.skel{background:linear-gradient(90deg,var(--linha),var(--card),var(--linha));background-size:200% 100%;animation:sk 1.2s infinite;border-radius:14px;height:72px}
+@keyframes sk{to{background-position:-200% 0}}
+footer{text-align:center;color:var(--sub);font-size:12px;padding:24px 0 40px}
+/* QR / impressão */
+.qr-folha{background:#fff;color:#111;border-radius:12px;padding:20px;margin-bottom:16px}
+.qr-capa{text-align:center;padding:30px 10px;border-bottom:2px dashed #ccc;margin-bottom:20px}
+.qr-capa h1{margin:0 0 4px;font-size:34px;color:#1d2b5e}
+.qr-capa p{margin:0 0 18px;font-size:18px}
+.qr-capa .qr{display:inline-block;padding:12px;border:6px solid #d1186e;border-radius:16px}
+.qr-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.qr-cel{border:1px solid #ccc;border-radius:10px;padding:10px;text-align:center;break-inside:avoid}
+.qr-cel .qr{display:flex;justify-content:center;margin-bottom:6px}
+.qr-cel b{display:block;font-size:20px;color:#d1186e}
+.qr-cel span{font-size:13px}
+.qr img,.qr canvas{display:block}
+@media (max-width:700px){.qr-grid{grid-template-columns:repeat(2,1fr)}.fotos{grid-template-columns:1fr}}
+@media print{
+  header,.crumbs,.barra-admin,footer,#toast{display:none!important}
+  body,html{background:#fff}
+  main{padding:0;max-width:none}
+  .qr-folha{padding:0;border-radius:0}
+  .qr-capa{page-break-after:always;border:0;padding-top:80px}
+  .qr-capa .qr canvas,.qr-capa .qr img{width:340px!important;height:340px!important}
+  .qr-grid{grid-template-columns:repeat(3,1fr)}
+}
+</style>
+</head>
+<body>
+<header>
+  <img src="icon-192.png" alt="">
+  <div class="tit"><b>Layouts das Lojas</b><small id="htit">Molicenter Supermercados</small></div>
+  <button class="hbtn" id="bTema" title="Tema claro/escuro">🌙</button>
+  <button class="hbtn" id="bAdmin" title="Administrador">🔒</button>
+</header>
+<main id="app"></main>
+<footer>Molicenter · Layouts das Lojas · v<span id="ver"></span></footer>
+
+<div id="lb">
+  <div class="topo"><b id="lbTit"></b><button class="hbtn" id="lbZoom">🔍</button><button class="hbtn" id="lbFechar">✕</button></div>
+  <div class="area" id="lbArea"><img id="lbImg" alt=""></div>
+  <div class="pe"><button class="btn" id="lbAnt">‹ Anterior</button><span id="lbInfo" class="sub" style="color:#ccd;align-self:center"></span><button class="btn" id="lbProx">Próximo ›</button></div>
+</div>
+
+<div class="modal" id="mLogin">
+  <form class="caixa" id="fLogin" autocomplete="off">
+    <h3>Acesso do administrador</h3>
+    <div class="sub">Libera o envio e a troca das fotos.</div>
+    <input type="text" id="iSenha" name="cod-acesso-layouts" placeholder="Senha" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore>
+    <div class="erro" id="eLogin"></div>
+    <div class="linha"><button type="button" class="btn sec" id="bCancLogin">Cancelar</button><button type="submit" class="btn pri" id="bEntrar">Entrar</button></div>
+  </form>
+</div>
+
+<div class="modal" id="mConf">
+  <div class="caixa"><h3 id="cTit"></h3><div class="sub" id="cTxt"></div><br>
+  <div class="linha"><button class="btn sec" id="cNao">Cancelar</button><button class="btn pri" id="cSim">Confirmar</button></div></div>
+</div>
+
+<div id="carregando"><div class="spin"></div><div id="carTxt">Carregando…</div><div class="prog" id="carProg" style="display:none"><i></i></div></div>
+<div id="toast"></div>
+<input type="file" id="iFoto" accept="image/*" capture="environment" hidden>
+
+<script>
+/* ===================== CONFIGURAÇÃO ===================== */
+// Cole aqui a URL do App da Web do Apps Script (termina em /exec)
+const API_URL = 'https://script.google.com/macros/s/AKfycbwCybMltbjeU4wqH04w3w__oPtIEH_z3B-Ddv-OYSyKbKd-9FXpDbK9yo8WucDAFNVc/exec';
+const VERSAO = '1.0.0';
+// Tamanho máximo da foto enviada (lado maior, em pixels) e qualidade do JPEG
+const FOTO_MAX = 4000, FOTO_QUALIDADE = 0.9;
+/* ======================================================== */
+
+const DEMO = !API_URL || new URLSearchParams(location.search).has('demo');
+const $ = s => document.querySelector(s);
+const app = $('#app');
+$('#ver').textContent = VERSAO + (DEMO ? ' · demonstração' : '');
+const col = new Intl.Collator('pt-BR', {numeric:true, sensitivity:'base'});
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const store = {
+  get(k){ try{ return localStorage.getItem(k) }catch(e){ return null } },
+  set(k,v){ try{ localStorage.setItem(k,v) }catch(e){} },
+  sget(k){ try{ return sessionStorage.getItem(k) }catch(e){ return null } },
+  sset(k,v){ try{ v==null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k,v) }catch(e){} }
+};
+
+/* ---------- tema ---------- */
+function aplicarTema(t){ document.documentElement.dataset.theme = t; store.set('tema', t); const b=document.getElementById('bTema'); if(b) b.textContent = t==='dark' ? '☀️' : '🌙'; }
+aplicarTema(store.get('tema') || 'light');
+$('#bTema').onclick = () => aplicarTema(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+
+/* ---------- estado ---------- */
+let estrutura = null;            // {lojas:[{id,nome,corredores:[{id,nome}]}]}
+let fotosAtual = null;           // resposta de fotos do corredor aberto
+let senha = store.sget('adm');   // senha guardada só enquanto a aba estiver aberta
+const isAdmin = () => !!senha;
+function atualizarBotaoAdmin(){ const b=$('#bAdmin'); b.classList.toggle('on', isAdmin()); b.textContent = isAdmin() ? '🔓 Admin' : '🔒'; }
+atualizarBotaoAdmin();
+
+/* ---------- utilidades de interface ---------- */
+let tt;
+function toast(msg, erro){ const t=$('#toast'); t.textContent=msg; t.className='on'+(erro?' e':''); clearTimeout(tt); tt=setTimeout(()=>t.className='',3200); }
+function carregando(on, txt, pct){ $('#carregando').classList.toggle('on', on); if(txt) $('#carTxt').textContent=txt; const p=$('#carProg'); if(pct==null){p.style.display='none'} else {p.style.display='block'; p.firstElementChild.style.width=pct+'%'} }
+function confirmar(tit, txt){ return new Promise(r=>{ $('#cTit').textContent=tit; $('#cTxt').textContent=txt; const m=$('#mConf'); m.classList.add('on');
+  const fim=v=>{m.classList.remove('on'); $('#cSim').onclick=$('#cNao').onclick=null; r(v)}; $('#cSim').onclick=()=>fim(true); $('#cNao').onclick=()=>fim(false); }); }
+
+const numLoja = nome => (String(nome).match(/\d+/)||[''])[0].padStart(2,'0');
+const codCorr = nome => { const m = String(nome).split('-'); return m.length>1 ? m[0].trim() : ''; };
+const nomeCorr = nome => { const i = String(nome).indexOf('-'); return i>=0 ? nome.slice(i+1).trim() : nome; };
+const imgUrl = (id, w) => DEMO ? demoImg(id) : `https://lh3.googleusercontent.com/d/${id}=w${w}`;
+const imgFallback = (id, w) => `https://drive.google.com/thumbnail?id=${id}&sz=w${w}`;
+function linkLoja(l){ return `${location.origin}${location.pathname}?loja=${numLoja(l.nome)}`; }
+function linkCorr(l,c){ return `${linkLoja(l)}&c=${c.id}`; }
+
+/* ---------- API ---------- */
+async function apiGet(params){
+  if (DEMO) return demoGet(params);
+  const r = await fetch(API_URL + '?' + new URLSearchParams(params));
+  const j = await r.json(); if (j.erro) throw new Error(j.erro); return j;
+}
+async function apiPost(body){
+  const dados = Object.assign({senha}, body);
+  if (DEMO) return demoPost(dados);
+  const r = await fetch(API_URL, {method:'POST', body: JSON.stringify(dados)});
+  const j = await r.json(); if (j.erro) throw new Error(j.erro); return j;
+}
+
+async function carregarEstrutura(forcar){
+  if (!forcar && !estrutura){ const c = store.get('estrutura'); if (c) try{ estrutura = JSON.parse(c) }catch(e){} }
+  if (!estrutura || forcar){
+    estrutura = await apiGet({acao:'estrutura'});
+    store.set('estrutura', JSON.stringify(estrutura));
+  } else {
+    // atualiza em segundo plano
+    apiGet({acao:'estrutura'}).then(e=>{ estrutura=e; store.set('estrutura', JSON.stringify(e)); }).catch(()=>{});
+  }
+  estrutura.lojas.sort((a,b)=>col.compare(a.nome,b.nome));
+  estrutura.lojas.forEach(l=>l.corredores.sort((a,b)=>col.compare(a.nome,b.nome)));
+  return estrutura;
+}
+
+/* ---------- rotas (?loja=01&c=ID&qr=1) ---------- */
+function ir(params){ const q = new URLSearchParams(params).toString(); history.pushState(null,'', q ? '?'+q : location.pathname); render(); window.scrollTo(0,0); }
+window.addEventListener('popstate', render);
+
+async function render(){
+  const p = new URLSearchParams(location.search);
+  try{
+    if (!estrutura){ app.innerHTML = '<div class="skel"></div><br><div class="skel"></div><br><div class="skel"></div>'; await carregarEstrutura(); }
+    const loja = p.get('loja') ? estrutura.lojas.find(l=>numLoja(l.nome)===p.get('loja').padStart(2,'0')) : null;
+    if (!loja) return telaInicio();
+    const corr = p.get('c') ? loja.corredores.find(c=>c.id===p.get('c')) : null;
+    if (p.get('qr')) return telaQR(loja);
+    if (!corr) return telaLoja(loja);
+    return telaCorredor(loja, corr);
+  }catch(err){
+    app.innerHTML = `<div class="vazio">Não foi possível carregar.<br><small>${esc(err.message)}</small><br><br><button class="btn pri" onclick="estrutura=null;render()">Tentar de novo</button></div>`;
+  }
+}
+
+/* ---------- telas ---------- */
+function telaInicio(){
+  $('#htit').textContent = 'Molicenter Supermercados';
+  app.innerHTML = `
+    ${DEMO ? '<div class="aviso">Modo demonstração: dados de exemplo. Configure a API_URL para usar as pastas do Drive.</div>' : ''}
+    <div class="crumbs"><h2>Escolha a loja</h2></div>
+    <div class="grid-lojas">${estrutura.lojas.map(l=>`
+      <button class="loja" data-l="${numLoja(l.nome)}"><span class="sub">Loja</span><span class="num">${numLoja(l.nome)}</span><span class="lbl">${l.corredores.length} corredores</span></button>`).join('')}
+    </div>`;
+  app.querySelectorAll('.loja').forEach(b=>b.onclick=()=>ir({loja:b.dataset.l}));
+}
+
+function telaLoja(loja){
+  $('#htit').textContent = loja.nome;
+  app.innerHTML = `
+    <div class="crumbs"><button class="voltar" id="vv">‹ Lojas</button><h2>${esc(loja.nome)}</h2></div>
+    ${isAdmin() ? `<div class="barra-admin"><button class="btn nav" id="bQR">▦ QR Codes para imprimir</button><button class="btn sec" id="bAtu">↻ Atualizar corredores</button></div>` : ''}
+    <input class="busca" id="busca" placeholder="Buscar corredor ou categoria…" autocomplete="off">
+    <div class="lista-corr" id="lc"></div>`;
+  $('#vv').onclick = ()=>ir({});
+  if (isAdmin()){
+    $('#bQR').onclick = ()=>ir({loja:numLoja(loja.nome), qr:1});
+    $('#bAtu').onclick = async()=>{ carregando(true,'Atualizando…'); try{ await carregarEstrutura(true); render(); }catch(e){toast(e.message,1)} carregando(false); };
+  }
+  const desenhar = (f='')=>{
+    const t = f.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    const lst = loja.corredores.filter(c=>c.nome.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(t));
+    $('#lc').innerHTML = lst.length ? lst.map(c=>`
+      <button class="corr" data-c="${c.id}"><span class="cod">${esc(codCorr(c.nome)||'•')}</span><span class="nm">${esc(nomeCorr(c.nome))}</span><span class="seta">›</span></button>`).join('')
+      : '<div class="vazio">Nenhum corredor encontrado.</div>';
+    $('#lc').querySelectorAll('.corr').forEach(b=>b.onclick=()=>ir({loja:numLoja(loja.nome), c:b.dataset.c}));
+  };
+  $('#busca').oninput = e=>desenhar(e.target.value);
+  desenhar();
+}
+
+async function telaCorredor(loja, corr, fresco){
+  $('#htit').textContent = `${loja.nome} · ${codCorr(corr.nome)}`;
+  const idx = loja.corredores.indexOf(corr);
+  const ant = loja.corredores[idx-1], prox = loja.corredores[idx+1];
+  app.innerHTML = `
+    <div class="crumbs"><button class="voltar" id="vv">‹ ${esc(loja.nome)}</button><h2>${esc(corr.nome)}</h2></div>
+    <div class="fotos" id="fg"><div class="skel" style="height:260px"></div><div class="skel" style="height:260px"></div></div>
+    <div id="hist"></div>
+    <div class="crumbs" style="justify-content:space-between;margin-top:18px">
+      ${ant ? `<button class="voltar" id="cAnt">‹ ${esc(codCorr(ant.nome)||ant.nome)}</button>` : '<span></span>'}
+      ${prox ? `<button class="voltar" id="cProx">${esc(codCorr(prox.nome)||prox.nome)} ›</button>` : ''}
+    </div>`;
+  $('#vv').onclick = ()=>ir({loja:numLoja(loja.nome)});
+  if (ant) $('#cAnt').onclick = ()=>ir({loja:numLoja(loja.nome), c:ant.id});
+  if (prox) $('#cProx').onclick = ()=>ir({loja:numLoja(loja.nome), c:prox.id});
+  try{
+    fotosAtual = await apiGet({acao:'fotos', pasta:corr.id, fresco: fresco?'1':'0'});
+    desenharFotos(loja, corr);
+  }catch(err){
+    $('#fg').innerHTML = `<div class="vazio">Não foi possível carregar as fotos.<br><small>${esc(err.message)}</small></div>`;
+  }
+}
+
+function desenharFotos(loja, corr){
+  const fs = fotosAtual.fotos, adm = isAdmin();
+  let h = fs.map((f,i)=>`
+    <div class="foto">
+      <button class="img" data-i="${i}"><img loading="lazy" src="${imgUrl(f.id,900)}" data-id="${f.id}" alt="Módulo ${i+1}"><span class="tag">Módulo ${String(i+1).padStart(2,'0')}</span></button>
+      <div class="info"><span class="sub">Atualizada em ${esc(f.atualizado)}</span></div>
+      ${adm ? `<div class="acoes">
+        <button class="btn pri mini" data-trocar="${i+1}">📷 Trocar foto</button>
+        <button class="btn sec mini" data-mover="${i+1}" data-d="-1" ${i===0?'disabled':''}>◀</button>
+        <button class="btn sec mini" data-mover="${i+1}" data-d="1" ${i===fs.length-1?'disabled':''}>▶</button>
+        <button class="btn sec mini" data-remover="${i+1}">🗑</button>
+      </div>` : ''}
+    </div>`).join('');
+  if (adm) h += `<button class="add" id="bAdd"><span>＋</span>Adicionar módulo ${String(fs.length+1).padStart(2,'0')}<small class="sub">tirar foto ou escolher da galeria</small></button>`;
+  if (!fs.length && !adm) h = '<div class="vazio">Ainda não há fotos deste corredor.</div>';
+  $('#fg').innerHTML = h;
+
+  $('#fg').querySelectorAll('img[data-id]').forEach(img=>img.onerror=()=>{ if(!img.dataset.fb){ img.dataset.fb=1; img.src=imgFallback(img.dataset.id,900);} });
+  $('#fg').querySelectorAll('button.img').forEach(b=>b.onclick=()=>abrirLB(fs, +b.dataset.i, corr.nome));
+  if (adm){
+    $('#fg').querySelectorAll('[data-trocar]').forEach(b=>b.onclick=()=>escolherFoto(loja,corr,+b.dataset.trocar));
+    $('#fg').querySelectorAll('[data-mover]').forEach(b=>b.onclick=()=>acao(loja,corr,{acao:'mover',modulo:+b.dataset.mover,direcao:+b.dataset.d},'Movendo…'));
+    $('#fg').querySelectorAll('[data-remover]').forEach(b=>b.onclick=async()=>{
+      if (await confirmar('Remover o módulo '+b.dataset.remover+'?','A foto vai para a pasta Histórico do corredor e pode ser restaurada depois.'))
+        acao(loja,corr,{acao:'remover',modulo:+b.dataset.remover},'Removendo…');
+    });
+    $('#bAdd').onclick = ()=>escolherFoto(loja,corr,null);
+  }
+
+  const hs = fotosAtual.historico || [];
+  $('#hist').innerHTML = hs.length ? `
+    <details class="hist"><summary>Histórico (${hs.length} foto${hs.length>1?'s':''} anterior${hs.length>1?'es':''})</summary>
+      <div class="hist-grid">${hs.map((f,i)=>`
+        <div class="hist-item"><button class="img" data-hi="${i}"><img loading="lazy" src="${imgUrl(f.id,400)}" data-id="${f.id}"></button>
+        ${esc(f.nome.replace(/\.[a-z]+$/i,''))}
+        ${adm ? `<br><button class="btn sec mini" data-rest="${f.id}" style="margin-top:4px">↺ Restaurar</button>`:''}</div>`).join('')}
+      </div></details>` : '';
+  $('#hist').querySelectorAll('img[data-id]').forEach(img=>img.onerror=()=>{ if(!img.dataset.fb){ img.dataset.fb=1; img.src=imgFallback(img.dataset.id,400);} });
+  $('#hist').querySelectorAll('[data-hi]').forEach(b=>b.onclick=()=>abrirLB(hs, +b.dataset.hi, 'Histórico · '+corr.nome));
+  $('#hist').querySelectorAll('[data-rest]').forEach(b=>b.onclick=()=>acao(loja,corr,{acao:'restaurar',fotoId:b.dataset.rest},'Restaurando…'));
+}
+
+async function acao(loja, corr, body, txt){
+  carregando(true, txt);
+  try{
+    const r = await apiPost(Object.assign({pasta:corr.id}, body));
+    fotosAtual = r.fotos; desenharFotos(loja, corr); toast('Pronto!');
+  }catch(e){ tratarErroAdmin(e); }
+  carregando(false);
+}
+
+function tratarErroAdmin(e){
+  if (/senha/i.test(e.message)){ senha=null; store.sset('adm',null); atualizarBotaoAdmin(); render(); }
+  toast(e.message, 1);
+}
+
+/* ---------- envio de foto ---------- */
+function escolherFoto(loja, corr, modulo){
+  const inp = $('#iFoto'); inp.value='';
+  inp.onchange = async()=>{
+    const arq = inp.files[0]; if (!arq) return;
+    carregando(true, 'Preparando a foto…', 5);
+    try{
+      const {base64, w, h, kb} = await prepararFoto(arq);
+      carregando(true, `Enviando ${w}×${h} (${(kb/1024).toFixed(1)} MB)…`, 35);
+      let pct=35; const tm=setInterval(()=>{ pct=Math.min(92,pct+3); carregando(true,null,pct); },400);
+      try{
+        const r = await apiPost({acao:'enviar', pasta:corr.id, modulo, base64, mime:'image/jpeg'});
+        clearInterval(tm); carregando(true,'Concluído',100);
+        fotosAtual = r.fotos; desenharFotos(loja, corr);
+        toast(modulo ? `Módulo ${String(modulo).padStart(2,'0')} atualizado` : `Módulo ${String(r.modulo).padStart(2,'0')} adicionado`);
+      } finally { clearInterval(tm); }
+    }catch(e){ tratarErroAdmin(e); }
+    carregando(false);
+  };
+  inp.click();
+}
+
+async function prepararFoto(arq){
+  let fonte;
+  try{ fonte = await createImageBitmap(arq, {imageOrientation:'from-image'}); }
+  catch(e){ fonte = await new Promise((ok,er)=>{ const i=new Image(); i.onload=()=>ok(i); i.onerror=er; i.src=URL.createObjectURL(arq); }); }
+  const W = fonte.width, H = fonte.height, f = Math.min(1, FOTO_MAX/Math.max(W,H));
+  const w = Math.round(W*f), h = Math.round(H*f);
+  const cv = document.createElement('canvas'); cv.width=w; cv.height=h;
+  const cx = cv.getContext('2d'); cx.imageSmoothingQuality='high'; cx.drawImage(fonte,0,0,w,h);
+  const blob = await new Promise(r=>cv.toBlob(r,'image/jpeg',FOTO_QUALIDADE));
+  const base64 = await new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(String(fr.result).split(',')[1]); fr.readAsDataURL(blob); });
+  return {base64, w, h, kb: blob.size/1024};
+}
+
+/* ---------- lightbox ---------- */
+let lb = {lista:[], i:0, tit:''};
+function abrirLB(lista, i, tit){ lb={lista,i,tit}; $('#lb').classList.add('on'); mostrarLB(); }
+function mostrarLB(){
+  const f = lb.lista[lb.i], img=$('#lbImg');
+  $('#lbArea').classList.remove('zoom');
+  img.dataset.fb=''; img.onerror=()=>{ if(!img.dataset.fb){img.dataset.fb=1; img.src=imgFallback(f.id,3000);} };
+  img.src = imgUrl(f.id, 3000);
+  $('#lbTit').textContent = lb.tit;
+  $('#lbInfo').textContent = `${lb.i+1} de ${lb.lista.length} · ${f.atualizado||''}`;
+  $('#lbAnt').disabled = lb.i===0; $('#lbProx').disabled = lb.i===lb.lista.length-1;
+}
+$('#lbFechar').onclick = ()=>$('#lb').classList.remove('on');
+$('#lbAnt').onclick = ()=>{ if(lb.i>0){lb.i--; mostrarLB();} };
+$('#lbProx').onclick = ()=>{ if(lb.i<lb.lista.length-1){lb.i++; mostrarLB();} };
+$('#lbZoom').onclick = ()=>$('#lbArea').classList.toggle('zoom');
+$('#lbImg').ondblclick = ()=>$('#lbArea').classList.toggle('zoom');
+let tx=null; $('#lbArea').addEventListener('touchstart',e=>{ tx = e.touches.length===1 ? e.touches[0].clientX : null },{passive:true});
+$('#lbArea').addEventListener('touchend',e=>{ if(tx==null || $('#lbArea').classList.contains('zoom')) return; const d=e.changedTouches[0].clientX-tx; if(Math.abs(d)>60){ d<0 ? $('#lbProx').click() : $('#lbAnt').click(); } });
+document.addEventListener('keydown',e=>{ if(!$('#lb').classList.contains('on')) return; if(e.key==='Escape') $('#lbFechar').click(); if(e.key==='ArrowLeft') $('#lbAnt').click(); if(e.key==='ArrowRight') $('#lbProx').click(); });
+
+/* ---------- login do admin ---------- */
+$('#bAdmin').onclick = async()=>{
+  if (isAdmin()){
+    if (await confirmar('Sair do modo administrador?','O envio de fotos fica bloqueado de novo neste aparelho.')){ senha=null; store.sset('adm',null); atualizarBotaoAdmin(); render(); }
+    return;
+  }
+  $('#eLogin').textContent=''; $('#iSenha').value=''; $('#mLogin').classList.add('on'); setTimeout(()=>$('#iSenha').focus(),50);
+};
+$('#bCancLogin').onclick = ()=>$('#mLogin').classList.remove('on');
+$('#fLogin').onsubmit = async e=>{
+  e.preventDefault();
+  const s = $('#iSenha').value; if(!s) return;
+  $('#bEntrar').disabled=true; $('#eLogin').textContent='';
+  try{
+    const ant = senha; senha = s;
+    try{ await apiPost({acao:'login'}); } catch(err){ senha = ant; throw err; }
+    store.sset('adm', s); atualizarBotaoAdmin(); $('#mLogin').classList.remove('on'); toast('Modo administrador ativo'); render();
+  }catch(err){ $('#eLogin').textContent = err.message; }
+  $('#bEntrar').disabled=false;
+};
+
+/* ---------- QR Codes ---------- */
+function telaQR(loja){
+  $('#htit').textContent = `${loja.nome} · QR Codes`;
+  app.innerHTML = `
+    <div class="crumbs"><button class="voltar" id="vv">‹ ${esc(loja.nome)}</button><h2>QR Codes</h2></div>
+    <div class="barra-admin"><button class="btn pri" onclick="print()">🖨 Imprimir</button><span class="sub" style="align-self:center">1ª página: QR da loja (1ª gôndola). Depois: um QR por corredor.</span></div>
+    <div class="qr-folha">
+      <div class="qr-capa"><h1>${esc(loja.nome)}</h1><p>Aponte a câmera para ver o layout dos corredores</p><div class="qr" id="qrLoja"></div></div>
+      <div class="qr-grid">${loja.corredores.map(c=>`<div class="qr-cel"><div class="qr" data-u="${esc(linkCorr(loja,c))}"></div><b>${esc(codCorr(c.nome)||'')}</b><span>${esc(nomeCorr(c.nome))}</span></div>`).join('')}</div>
+    </div>`;
+  $('#vv').onclick = ()=>ir({loja:numLoja(loja.nome)});
+  if (typeof QRCode === 'undefined'){ toast('Não carregou o gerador de QR. Verifique a internet.',1); return; }
+  new QRCode($('#qrLoja'), {text:linkLoja(loja), width:300, height:300, correctLevel:QRCode.CorrectLevel.M});
+  app.querySelectorAll('.qr-cel .qr').forEach(d=>new QRCode(d,{text:d.dataset.u, width:150, height:150, correctLevel:QRCode.CorrectLevel.M}));
+}
+
+/* ---------- modo demonstração ---------- */
+const DEMO_CORR = {
+  '01':['1A - Leite LV','1B - Saudáveis','2A - Café','2B - Achocolatado','3A - Chocolate','3B - Bisc Salgados','4A - Bisc Recheados','4B - Papel Higienico','5A - Fraldas','5B - Desodorantes','6A - Perfumaria','6B - Agua Sanitaria','7A - Sabão em Pó','7B - Limpeza','8A - Detergente','8B - Bazar','9 - Cerveja','10A - Refrigerante','10B - Suco/Agua','11A - Basico','11B - Óleos','12A - Conservas','12B - Macarrão','13A - Temperos','13B - Embalagens'],
+  '02':['0 - Adega','1A - Bebidas','1B - Agua','2A - Saudaveis','2B - Básico','3A - Oleos','3B - Macarrão','4A - Conservas','4B - Matinais','5A - Leite LV','5B - Biscoito','6A - Bomboniere','6B - Perfumaria','7A - Shampoo','7B - PapelHig','8A - Limpeza','8B - Detergente','9A - SabaoPo','9B - Bazar','10A - Pets','10B - Padaria']
+};
+let demoDB = null;
+function demoInit(){
+  if (demoDB) return;
+  demoDB = {lojas:[], fotos:{}};
+  for (let n=1;n<=8;n++){
+    const k=String(n).padStart(2,'0'), nomes = DEMO_CORR[k] || DEMO_CORR[n%2?'01':'02'].slice(0, 14+n);
+    const l = {id:'L'+k, nome:'Loja '+k, corredores:nomes.map((c,i)=>({id:`C${k}_${i}`, nome:c}))};
+    demoDB.lojas.push(l);
+    l.corredores.forEach((c,i)=>{ demoDB.fotos[c.id] = {fotos:Array.from({length:3+(i%5)},(_,j)=>({id:`${c.id}_${j}`, nome:`Módulo ${String(j+1).padStart(2,'0')}.jpg`, atualizado:'15/10/2026 08:30'})), historico:[]}; });
+  }
+}
+const demoBlobs = {};
+function demoImg(id){
+  if (demoBlobs[id]) return demoBlobs[id];
+  let s=0; for(const ch of id) s=(s*31+ch.charCodeAt(0))>>>0;
+  const cores=['#e63946','#f4a261','#2a9d8f','#457b9d','#e9c46a','#8ecae6','#d1186e','#6a994e','#ffb703','#3a86ff'];
+  let p=''; for(let r=0;r<4;r++){ let x=10; while(x<790){ const w=18+((s>>(x%13))%30); p+=`<rect x="${x}" y="${40+r*140}" width="${w}" height="${90+((s+x)%30)}" rx="4" fill="${cores[(s+x+r)%cores.length]}"/>`; x+=w+4; } p+=`<rect x="0" y="${135+r*140}" width="800" height="12" fill="#9aa3b8"/>`; }
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600"><rect width="800" height="600" fill="#eef0f5"/>${p}</svg>`;
+  return demoBlobs[id] = 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+}
+async function demoGet(p){ demoInit(); await new Promise(r=>setTimeout(r,250));
+  if (p.acao==='estrutura') return JSON.parse(JSON.stringify({lojas:demoDB.lojas}));
+  const f = demoDB.fotos[p.pasta]; return {pasta:p.pasta, fotos:f.fotos.slice(), historico:f.historico.slice()}; }
+async function demoPost(b){ demoInit(); await new Promise(r=>setTimeout(r,500));
+  if (b.senha!=='demo') throw new Error('Senha incorreta (na demonstração a senha é: demo)');
+  if (b.acao==='login') return {ok:true};
+  const f = demoDB.fotos[b.pasta], agora = new Date().toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
+  if (b.acao==='enviar'){ const novo={id:'N'+Date.now(), nome:'', atualizado:agora}; demoBlobs[novo.id]='data:image/jpeg;base64,'+b.base64;
+    if (b.modulo){ const ant=f.fotos[b.modulo-1]; ant.nome=`Módulo ${String(b.modulo).padStart(2,'0')} - substituída ${agora}`; f.historico.unshift(ant); f.fotos[b.modulo-1]=novo; } else f.fotos.push(novo); }
+  if (b.acao==='remover'){ const [ant]=f.fotos.splice(b.modulo-1,1); ant.nome=`Módulo ${String(b.modulo).padStart(2,'0')} - removida ${agora}`; f.historico.unshift(ant); }
+  if (b.acao==='mover'){ const a=b.modulo-1, c=a+(b.direcao<0?-1:1); [f.fotos[a],f.fotos[c]]=[f.fotos[c],f.fotos[a]]; }
+  if (b.acao==='restaurar'){ const i=f.historico.findIndex(x=>x.id===b.fotoId); const [x]=f.historico.splice(i,1); f.fotos.push(x); }
+  return {ok:true, fotos:{pasta:b.pasta, fotos:f.fotos.slice(), historico:f.historico.slice()}};
+}
+
+/* ---------- início ---------- */
+if ('serviceWorker' in navigator && !DEMO) navigator.serviceWorker.register('sw.js').catch(()=>{});
+render();
+</script>
+</body>
+</html>
